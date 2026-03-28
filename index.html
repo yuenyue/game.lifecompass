@@ -2627,7 +2627,7 @@ function startLobbyPoll(){
           if(!isHost){gMode=rs.gameState.gameMode;loadOnlineGame(rs.gameState);}
         }
       }catch(e){}
-    },1000);
+    },2000);
   }
 }
 
@@ -3157,31 +3157,16 @@ function renderGame(){
   }
   document.getElementById('ptabs').innerHTML=tabs;
   var sb=document.getElementById('sb');
-  if(!isMyTurn){
-    sb.style.background='rgba(0,0,0,0.06)';sb.style.color='#555';sb.style.border='none';
-    sb.textContent='⏳ '+G.players[cp]+' さんのターンです。お待ちください...';
-  } else if(done){
-    sb.style.background='#e8f5e9';sb.style.color='#2e7d32';sb.style.border='2px solid #66bb6a';
-    sb.textContent='✅ '+G.players[cp]+' さん完了！次のプレイヤーへ進みます...';
-  } else if(G.sh>=0&&G.sf<0){
-    sb.style.background='#fff9e6';sb.style.color='#b36200';sb.style.border='2px solid #ffb74d';
-    sb.textContent='手札を選択済み ✓ → 次に場のカードをクリックしてください';
-  } else if(G.sf>=0&&G.sh<0){
-    sb.style.background='#fff9e6';sb.style.color='#b36200';sb.style.border='2px solid #ffb74d';
-    sb.textContent='場のカードを選択済み ✓ → 次に手札をクリックしてください';
-  } else if(G.sub===1){
-    sb.style.background='#e3f2fd';sb.style.color='#0d47a1';sb.style.border='2px solid #42a5f5';
-    sb.textContent='🎯 あなたのターン！手札か場のカードをクリックして交換してください（必須）';
-  } else {
-    sb.style.background='#e3f2fd';sb.style.color='#0d47a1';sb.style.border='2px solid #42a5f5';
-    sb.textContent='🎯 あなたのターン！交換するか、パスを選んでください';
-  }
+  if(!isMyTurn)sb.textContent=G.players[cp]+' さんのターンです。お待ちください...';
+  else if(done)sb.textContent=G.players[cp]+' さん完了！「次のプレイヤーへ」を押してください。';
+  else if(G.sh>=0&&G.sf<0)sb.textContent='手札を選択済み ✓ → 次に場のカードをクリックしてください';
+  else if(G.sf>=0&&G.sh<0)sb.textContent='場のカードを選択済み ✓ → 次に手札をクリックしてください';
+  else if(G.sub===1)sb.textContent=G.players[cp]+' さん ▶ 手札か場のカードをクリックして交換してください（必須）';
+  else sb.textContent=G.players[cp]+' さん ▶ 交換するか、パスを選んでください';
   // Online: show my hand, Local: show current player's hand
   var handIdx=playMode==='online'?myIdx:cp;
   document.getElementById('hlbl').innerHTML='手札（<span style="color:'+PC[handIdx]+';font-weight:700">'+G.players[handIdx]+'</span>）';
   var nohov=(!isMyTurn||done)?'nohov':'';
-  // オンラインで自分のターン以外は手札エリアを薄く表示
-  var handArea=document.getElementById('hcards');if(handArea)handArea.style.opacity=(!isMyTurn&&playMode==='online')?'0.35':'1';
   var fc='',hc='';
   for(var i=0;i<G.field.length;i++){
     var owner=G.fieldOwner&&G.fieldOwner[i]>=0?G.fieldOwner[i]:-1;
@@ -3248,6 +3233,7 @@ function confirmEx(){
   if(!G.fieldOwner)G.fieldOwner=G.field.map(function(){return -1;});
   G.fieldOwner[G.sf]=G.cur;
   G.done[G.cur]=true;G.sh=-1;G.sf=-1;
+  if(playMode==='online')pushState();
   // 交換後は「次のプレイヤーへ」ボタンを押さずに自動で次へ進む
   nextTurn();
 }
@@ -3256,6 +3242,7 @@ function cancelPas(){document.getElementById('dpas').classList.remove('on');}
 function confirmPas(){
   document.getElementById('dpas').classList.remove('on');
   G.done[G.cur]=true;G.sh=-1;G.sf=-1;
+  if(playMode==='online')pushState();
   nextTurn();
 }
 function nextTurn(){
@@ -3264,11 +3251,11 @@ function nextTurn(){
   G.sh=-1;G.sf=-1;
   if(next<n){
     G.cur=next;
-    if(playMode==='online'){pushState();renderGame();return;}
+    if(playMode==='online'){pushState();return;} // online: pushしたらpollで全員更新
     renderGame();if(!solo)showPov(next);
   } else if(G.sub===1){
     G.sub=2;G.done=G.players.map(function(){return false;});G.cur=0;
-    if(playMode==='online'){pushState();renderGame();return;}
+    if(playMode==='online'){pushState();return;}
     renderGame();if(!solo)showPov(0);
   } else {
     G.rnd++;
@@ -3327,11 +3314,6 @@ function rfinal(){
     '<div style="font-size:19px;color:#000;margin-bottom:12px;font-weight:700">'+ord.length+'/'+fc+'枚 選択済み</div>'+
     '<div class="crow" style="margin:0 auto 20px">';
   for(var i=0;i<hand.length;i++){
-    // オンラインかつ自分の番でない場合はカード裏面を表示
-    if(playMode==='online'&&!isMyFinal){
-      html+='<div class="card" style="background:linear-gradient(135deg,#2a8a82,#174d49);width:var(--final-cw,160px);height:var(--final-ch,220px);flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:12px;box-shadow:var(--sh)"><div style="font-size:36px">🎴</div></div>';
-      continue;
-    }
     var c=hand[i],pos=ord.indexOf(i),isSel=pos>=0;
     var badge=pos>=0?['①','②','③','④','⑤'][pos]:'';
     var bcl=pos>=0?['nb1','nb2','nb3','nb1','nb2'][pos]:'';
